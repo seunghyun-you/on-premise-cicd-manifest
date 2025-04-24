@@ -1,5 +1,7 @@
-replicaCount: 1
-
+replica:
+  count: 1
+  limit: 3
+  
 image:
   repository: 10.0.0.20:8082/db
   tag: "v1.0.2"
@@ -7,7 +9,7 @@ image:
 
 service:
   type: ClusterIP
-  port: 5432
+  port: "5432"
   name: svc-postgres-db
 
 database:

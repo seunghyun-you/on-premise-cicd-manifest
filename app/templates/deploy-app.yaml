@@ -6,7 +6,8 @@ metadata:
   labels:
     app: node
 spec:
-  replicas: {{ .Values.replicaCount }}
+  replicas: {{ .Values.replica.count }}
+  revisionHistoryLimit: {{ .Values.replica.limit }}
   selector:
     matchLabels:
       app: node
