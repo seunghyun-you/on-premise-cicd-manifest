@@ -2,7 +2,7 @@ replicaCount: 1
 
 image:
   repository: 10.0.0.20:8082/app
-  tag: "v1.0.18"
+  tag: "v1.0.19"
   pullPolicy: Always
 
 service:
