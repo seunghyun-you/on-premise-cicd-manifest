@@ -8,3 +8,13 @@ image:
 service:
   type: ClusterIP
   port: 5432
+  name: svc-postgres-db
+
+database:
+  name: node
+  dataPath: /var/lib/postgresql/data/pgdata
+  secretName: secret-postgres
+
+volume:
+  name: postgresql-data
+  path: /var/lib/postgresql/data

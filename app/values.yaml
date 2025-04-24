@@ -8,3 +8,9 @@ image:
 service:
   type: ClusterIP
   port: 3000
+
+database:
+  host: "svc-postgres-db"
+  port: "5432"
+  name: "node"
+  secretName: "secret-postgres"

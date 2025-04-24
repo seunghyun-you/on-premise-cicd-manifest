@@ -23,30 +23,30 @@ spec:
         ports:
         - containerPort: {{ .Values.service.port }}
         env:
+        - name: POSTGRES_DB
+          value: {{ .Values.database.name }}
+        - name: PGDATA
+          value: {{ .Values.database.dataPath }}
         - name: POSTGRES_USER
           valueFrom:
             secretKeyRef:
-              name: secret-postgres
+              name: {{ .Values.database.secretName }}
               key: postgresql-user
         - name: POSTGRES_PASSWORD
           valueFrom:
             secretKeyRef:
-              name: secret-postgres
+              name: {{ .Values.database.secretName }}
               key: postgresql-password
-        - name: POSTGRES_DB
-          value: node
-        - name: PGDATA
-          value: /var/lib/postgresql/data/pgdata
         volumeMounts:
-        - name: postgresql-data
-          mountPath: /var/lib/postgresql/data
+        - name: {{ .Values.volume.name }}
+          mountPath: {{ .Values.volume.path }}
   volumeClaimTemplates:
   - metadata:
-      name: postgresql-data
+      name: {{ .Values.volume.name }}
     spec:
       accessModes: [ "ReadWriteOnce" ]
       storageClassName: "openebs-hostpath"
       resources:
         requests:
           storage: 1Gi
-  serviceName: svc-postgres-db
+  serviceName: {{ .Values.service.name }}
