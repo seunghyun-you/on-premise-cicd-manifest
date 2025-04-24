@@ -21,18 +21,18 @@ spec:
         image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
         imagePullPolicy: {{ .Values.image.pullPolicy }}
         ports:
-        - containerPort: {{ .Values.service.port }}
+        - containerPort: "{{ .Values.service.port }}"
         env:
         - name: PORT
-          value: {{ .Values.service.port }}
+          value: "{{ .Values.service.port }}"
         - name: HOST
-          value: {{ .Values.service.host }}
+          value: "{{ .Values.service.host }}"
         - name: DB_HOST
-          value: {{ .Values.database.host }}
+          value: "{{ .Values.database.host }}"
         - name: DB_PORT
-          value: {{ .Values.database.port }}
+          value: "{{ .Values.database.port }}"
         - name: DB_NAME
-          value: {{ .Values.database.name }}
+          value: "{{ .Values.database.name }}"
         - name: DB_USER
           valueFrom:
             secretKeyRef:
