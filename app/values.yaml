@@ -1,4 +1,4 @@
-replicaCount: "1"
+replicaCount: 1
 
 image:
   repository: 10.0.0.20:8082/app
@@ -7,7 +7,7 @@ image:
 
 service:
   type: ClusterIP
-  port: "3000"
+  port: 3000
 
 database:
   host: "svc-postgres-db"
