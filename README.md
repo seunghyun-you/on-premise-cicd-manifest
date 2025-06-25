@@ -98,36 +98,104 @@ Tools → NAT Networks → Create → 설정 정보 입력
 
 #### ⑤ Finish 버튼 클릭
 
+#### 3.2 VM 추가
+
+#### ① 'Ubuntu_24.04_LTS_Base' VM 더블 클릭 → 'Try or Install Ubuntu Server' 선택
+
+![alt text](_image/ubuntu_setting.png)
+
+#### ② English 선택
+
+![alt text](_image/ubuntu_setting_01.png)
+
+#### ③ 'Korean' 선택
+
+![alt text](_image/ubuntu_setting_02.png)
+
+#### ④ 'Ubuntu Server' 선택
+
+![alt text](_image/ubuntu_setting_03.png)
+
+#### ⑤ 'enp0s3' → 'Edit IPv4' → 설정 정보 입력
+
+- IPv4 Method : Manual
+- Subnet : 10.0.0.0/16
+- Address : 10.0.0.250
+- Gateway : 10.0.0.1
+- Name server : 10.0.0.1
+- Search domains : -
+
+![alt text](_image/ubuntu_setting_04.png)
+
+#### ⑥ 'Proxy address' PASS → 'Mirror address' PASS → 'disk' PASS
+
+#### ⑦ 'ubuntu-lv' 항목 선택 → 'Edit' → 설정 정보 입력
+
+- Size : 22.996G
+- Format : xfs
+
+![alt text](_image/ubuntu_setting_05.png)
+
+#### ⑧ Server 정보 입력
+
+- Your name : sh1517.you
+- Your servers name : ubuntu_base
+- Pick a username : ubuntu
+- Choose a password : qwer1234
+- Confirm your password : qwer1234
+
+![alt text](_image/ubuntu_setting_06.png)
+
+#### ⑨ 'Skip for now' 선택 → 'Install OpenSSH server' 선택 → 설치 시작
+
+![alt text](_image/ubuntu_setting_07.png)
+
 ## VirtualBox에 쿠버네티스 클러스터 구성
 
 ### 1. Ubuntu Base IMAGE setting
 
-- 기본 도구 설치
+#### ① 기본 도구 설치
 
 ```bash
 apt update -y
 apt install -y openssh-server curl tree vim
 ```
 
-- ip 설정
+#### ② IP 설정 및 적용
+
+```yaml
+# vim /etc/netplan/50-cloud-init.yaml
+network:
+  version: 2
+  ethernets:
+    enp0s3:
+      addresses:
+        - 10.0.0.250/16
+      gateway4: 10.0.0.1
+      nameservers:
+        addresses: [10.0.0.1]
+```
 
 ```bash
-vim /etc/netplan/50-cloud-init.yaml
 netplan apply
 ```
 
-- pem key 설정
+#### ③ Pem key 설정
 
 ```bash
 ssh-keygen -t rsa -b 2048 -f ubuntu.pem
+mv ./ubuntu.pem.pub ~/.ssh/authorized_keys
 ```
 
 ### 2. master, node clone setting
 
-- ip setting
-  master 10.0.0.10 127.0.0.1 8022
-  node01 10.0.0.11 127.0.0.1 8023
-  node02 10.0.0.12 127.0.0.1 8024
+#### ① IP setting
+
+```
+master 10.0.0.10 127.0.0.1 8022
+node01 10.0.0.11 127.0.0.1 8023
+node02 10.0.0.12 127.0.0.1 8024
+```
 
 - lvm extend
 
