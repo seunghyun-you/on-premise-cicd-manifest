@@ -1,157 +1,8 @@
-## 쿠버네티스 Add-on 설치
+## GitOps Tools 설치
 
-### 1. CNI 구성
+### 1. ArgoCD install
 
-#### 1.1 Cilium Install
-
-#### ① helm 설치
-
-```bash
-curl -fsSL -o get_helm.sh https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3
-chmod 700 get_helm.sh
-./get_helm.sh
-```
-
-#### ② Cilium Helm Repository 추가
-
-```bash
-helm repo add cilium https://helm.cilium.io/
-helm repo update
-```
-
-#### ③ Cilium Install
-
-```bash
-# helm option : https://docs.cilium.io/en/stable/helm-reference/
-# routingMode : https://docs.cilium.io/en/stable/network/concepts/routing/
-# ipam.mode : https://docs.cilium.io/en/stable/network/concepts/ipam/
-# ipv4NativeRoutingCIDR : https://docs.cilium.io/en/stable/network/concepts/masquerading/
-# l2announcements.enabled : https://docs.cilium.io/en/stable/network/l2-announcements/
-helm install cilium cilium/cilium --version 1.17.5 --namespace kube-system \
---set k8sServiceHost=auto --set k8sServicePort=6443 --set debug.enabled=true \
---set k8sServiceLookupConfigMapName=cluster-info --set k8sServiceLookupNamespace=kube-public \
---set rollOutCiliumPods=true --set routingMode=native --set autoDirectNodeRoutes=true \
---set bpf.masquerade=true --set bpf.hostRouting=true --set endpointRoutes.enabled=true \
---set ipam.mode=kubernetes --set k8s.requireIPv4PodCIDR=true --set kubeProxyReplacement=true \
---set ipv4NativeRoutingCIDR=10.0.0.0/16 --set installNoConntrackIptablesRules=true \
---set hubble.ui.enabled=true --set hubble.relay.enabled=true --set prometheus.enabled=true --set operator.prometheus.enabled=true --set hubble.metrics.enableOpenMetrics=true \
---set hubble.metrics.enabled="{dns:query;ignoreAAAA,drop,tcp,flow,port-distribution,icmp,httpV2:exemplars=true;labelsContext=source_ip\,source_namespace\,source_workload\,destination_ip\,destination_namespace\,destination_workload\,traffic_direction}" \
---set operator.replicas=1 --set l2announcements.enabled=true --set externalIPs.enabled=true
-```
-
-#### ④ Cilium CLI 설치
-
-```bash
-CILIUM_CLI_VERSION=$(curl -s https://raw.githubusercontent.com/cilium/cilium-cli/main/stable.txt)
-CLI_ARCH=amd64
-if [ "$(uname -m)" = "aarch64" ]; then CLI_ARCH=arm64; fi
-curl -L --fail --remote-name-all https://github.com/cilium/cilium-cli/releases/download/${CILIUM_CLI_VERSION}/cilium-linux-${CLI_ARCH}.tar.gz{,.sha256sum}
-sha256sum --check cilium-linux-${CLI_ARCH}.tar.gz.sha256sum
-sudo tar xzvfC cilium-linux-${CLI_ARCH}.tar.gz /usr/local/bin
-rm cilium-linux-${CLI_ARCH}.tar.gz{,.sha256sum}
-```
-
-```bash
-cilium status --wait
-```
-
-#### ⑤ Cluster 상태 확인
-
-```bash
-kubectl get po -A
-```
-
-#### 1.2 Calico CNI 설치
-
-```bash
-# https://docs.tigera.io/calico/latest/getting-started/kubernetes/quickstart
-kubectl create -f https://raw.githubusercontent.com/projectcalico/calico/v3.30.2/manifests/tigera-operator.yaml
-```
-
-### 2. Metal MB 설치 (https://metallb.io/installation/) - Calico
-
-#### 2.1 ARP 모드를 활성화
-
-```bash
-kubectl patch configmap kube-proxy -n kube-system --patch '{"data":{"config.conf":"apiVersion: kubeproxy.config.k8s.io/v1alpha1\nkind: KubeProxyConfiguration\nmode: \"ipvs\"\nipvs:\n  strictARP: true"}}'
-```
-
-#### 2.2 Meltal lb install
-
-```bash
-kubectl apply -f https://raw.githubusercontent.com/metallb/metallb/v0.14.9/config/manifests/metallb-native.yaml
-```
-
-#### 2.3 IP Pool, L2 Layer 정의
-
-```yaml
-# metal-lb-config.yaml
-apiVersion: metallb.io/v1beta1
-kind: IPAddressPool
-metadata:
-  name: metal-ip-pool
-  namespace: metallb-system
-spec:
-  addresses:
-    - 10.0.0.100-10.0.0.110
----
-apiVersion: metallb.io/v1beta1
-kind: L2Advertisement
-metadata:
-  name: metal-adv
-  namespace: metallb-system
-spec:
-  ipAddressPools:
-    - metal-ip-pool
-```
-
-### 3. Cilium IP Pool Setting (L2 Mode)
-
-#### 3.1 ARP 모드를 활성화 : CiliumL2AnnouncementPolicy 생성
-
-```yaml
-# https://docs.cilium.io/en/stable/network/node-ipam/
-# https://isovalent.com/blog/post/migrating-from-metallb-to-cilium/
-# Cilium LoadBalancer IPAM 및 L2 서비스 공지 LAB : https://isovalent.com/labs/cilium-loadbalancer-ipam-and-l2-service-announcement/
-apiVersion: "cilium.io/v2alpha1"
-kind: CiliumL2AnnouncementPolicy
-metadata:
-  name: cilium-l2-announcement-policy
-spec:
-  externalIPs: true
-  loadBalancerIPs: true
-```
-
-#### 3.2 LB IP Pool 생성
-
-```yaml
-apiVersion: "cilium.io/v2alpha1"
-kind: CiliumLoadBalancerIPPool
-metadata:
-  name: "cilium-ip-ip-pool"
-spec:
-  blocks:
-    - cidr: "10.0.250.0/24"
-```
-
-- helm으로 설치한 후 옵션이 설정되지 않았을 때 하나씩 추가하는 방법
-
-```bash
-# cilium config set <KEY> <VALUE>
-cilium config set l2announcements.enabled true
-cilium config set externalIPs.enabled true
-cilium config view
-```
-
-### 4. Ingress NginX Controller 생성
-
-```bash
-kubectl apply -f https://raw.githubusercontent.com/kubernetes/ingress-nginx/controller-v1.10.1/deploy/static/provider/cloud/deploy.yaml
-```
-
-### 5. ArgoCD install
-
-#### 5.1 ArgoCD install
+#### 1.1 ArgoCD install
 
 ```bash
 kubectl create namespace argocd
@@ -159,7 +10,7 @@ kubectl apply -n argocd -f https://raw.githubusercontent.com/argoproj/argo-cd/st
 kubectl patch svc argocd-server -n argocd -p '{"spec": {"type":"LoadBalancer"}}'
 ```
 
-#### 5.2 ArgoCD CLI install
+#### 1.2 ArgoCD CLI install
 
 ```bash
 # Timeout으로 제대로 설치가 안될 경우 "--connect-timeout 30 --max-time 300" 옵션 추가
@@ -168,17 +19,68 @@ sudo install -m 555 argocd-linux-amd64 /usr/local/bin/argocd
 rm argocd-linux-amd64
 ```
 
-#### 5.3 ArgoCD Password check
+#### 1.3 ArgoCD Password check
 
 ```bash
 argocd admin initial-password -n argocd
 ```
 
-<!--
+#### 1.4 외부 접속 설정
 
-### 5. private registry
+**argocd server external ip 확인**
 
-- docker install
+```bash
+kubectl get svc -n argocd
+```
+
+**VirtualBox Nat Network 설정**
+
+Tools → NAT Networks → 'Kubernetes' → 'Port Forwarding' → 포워딩 정보 추가
+
+|        Name        | Protocol |  Host IP  | Host Port |          Guest IP           | Guest Port |
+| :----------------: | :------: | :-------: | :-------: | :-------------------------: | :--------: |
+|  ssh_control_node  |   TCP    | 127.0.0.1 |   8022    |          10.0.0.10          |     22     |
+| ssh_worker_node_01 |   TCP    | 127.0.0.1 |   8023    |          10.0.0.11          |     22     |
+| ssh_worker_node_02 |   TCP    | 127.0.0.1 |   8024    |          10.0.0.12          |     22     |
+| web_argocd_server  |   TCP    | 127.0.0.1 |   10443   | <ARGOCD_SERVER_EXTERNAL_IP> |    443     |
+
+### 2. Private Registry 구성
+
+#### 2.1 VirtualBox VM 복제
+
+- Ubuntu Base Images 우클릭 → 'Clone'
+
+- 설정 정보 입력
+
+  - 이름: gitops_tools_node
+
+  - MAC Address Policy : 'Generate new MAX addresses for all network adapters' → 'Finish'
+
+#### 2.2 IP 설정 및 적용
+
+```bash
+# vim /etc/netplan/00-installer-config.yaml
+network:
+  version: 2
+  ethernets:
+    enp0s3:
+      addresses:
+        - 10.0.0.20/16
+      nameservers:
+        addresses: [10.0.0.1]
+        search: []
+      routes:
+        - to: default
+          via: 10.0.0.1
+```
+
+#### 2.3 Hostname 설정
+
+```bash
+hostnamectl set-hostname gitops_node
+```
+
+#### 2.4 docker install
 
 ```bash
 apt update -y
@@ -188,7 +90,7 @@ usermod -a -G docker $USER
 chown root:docker /var/run/docker.sock
 ```
 
-- nexus start in container
+#### 2.5 Nexus 도커 컨테이너 실행
 
 ```bash
 cd ~
@@ -197,52 +99,108 @@ sudo chown -R 200 nexus-directory
 docker run -d -p 8081:8081 -p 8082:8082  --name nexus --restart=always -v ~/nexus-directory:/nexus-data sonatype/nexus3:latest
 ```
 
-- nexus password check
+#### 2.6 Nexus 패스워드 확인
 
 ```bash
 docker exec -it nexus /bin/bash
 cat /nexus-data/admin.password
+```
 
-- nexus access test (in nexkins server)
-vim /etc/docker/daemon.json
+#### 2.7 외부 접속 설정 (VirtualBox Nat Network 설정)
+
+Tools → NAT Networks → 'Kubernetes' → 'Port Forwarding' → 포워딩 정보 추가
+
+|        Name        | Protocol |  Host IP  | Host Port |          Guest IP           | Guest Port |
+| :----------------: | :------: | :-------: | :-------: | :-------------------------: | :--------: |
+|  ssh_control_node  |   TCP    | 127.0.0.1 |   8022    |          10.0.0.10          |     22     |
+| ssh_worker_node_01 |   TCP    | 127.0.0.1 |   8023    |          10.0.0.11          |     22     |
+| ssh_worker_node_02 |   TCP    | 127.0.0.1 |   8024    |          10.0.0.12          |     22     |
+| web_argocd_server  |   TCP    | 127.0.0.1 |   10443   | <ARGOCD_SERVER_EXTERNAL_IP> |    443     |
+| web_nexus_registry |   TCP    | 127.0.0.1 |   18081   |          10.0.0.20          |    8081    |
+
+#### 2.8 Nexus 저장소 구성
+
+**① 웹 브라우저에서 http://10.0.0.20:8081 접속 후 로그인 (로그인 후 관리자 패스워드 재설정)**
+
+![alt text](./_docs/_image/nexus_login.png)
+
+**② 설정 화면 → Repositories → Create repository 클릭**
+
+![alt text](./_docs/_image/nexus_repository_create.png)
+
+**③ 화면에서 docker(hosted) 클릭**
+
+**④ 저장소 설정 정보 입력**
+
+- Name 입력
+
+- HTTP 체크박스 체크 → 8082 입력
+
+- 'Enable Docker V1 API' 체크 (호환성을 위해)
+
+- Storage는 Default 유지
+
+- 화면 하단으로 내려가 'Create repositry' 버튼 클릭
+
+![alt text](./_docs/_image/nexus_repository_setting.png)
+
+**⑤ Security - Realms 화면 이동 → Docker Bearer Token Realm 추가 → 저장 버튼 클릭**
+
+![alt text](./_docs/_image/nexus_repository_setting_02.png)
+
+#### 2.9 nexus 접속 설정 (docker)
+
+**Nexus 접속을 위한 HTTP 설정**
+
+```bash
+# /etc/docker/daemon.json
 {
 	"insecure-registries" : [ "10.0.0.20:8082" ]
 }
+```
+
+**Nexus 접속을 위한 HTTP 설정**
+
+```bash
 systemctl restart docker
 docker login -u admin 10.0.0.20:8082
 ```
 
----
+#### 2.10 nexus 접속 설정 (containerd)
 
-### 6. node server private registry sign
-
-- containerd install
-
-```bash
-apt install containerd -y
-```
-
-- containerd setting
+**containerd 설정**
 
 ```bash
 # /etc/containerd/config.toml
 version = 2   # version 2로 수정
 ...
 # plugins 항목 하단에 아래 내용 추가
-[plugins."io.containerd.grpc.v1.cri".registry]
-  [plugins."io.containerd.grpc.v1.cri".registry.mirrors]
-    [plugins."io.containerd.grpc.v1.cri".registry.mirrors."10.0.0.20:8082"]
-      endpoint = ["http://10.0.0.20:8082"]
-  [plugins."io.containerd.grpc.v1.cri".registry.configs]
-    [plugins."io.containerd.grpc.v1.cri".registry.configs."10.0.0.20:8082".tls]
-      insecure_skip_verify = true
+    # REGISTRY_SERVER_IP = 실제 IP로 변환
+    [plugins."io.containerd.grpc.v1.cri".registry]
+      [plugins."io.containerd.grpc.v1.cri".registry.mirrors]
+        [plugins."io.containerd.grpc.v1.crt".registry.mirrors."docker.io"]
+          endpoint = ["https://registry-1.docker.io"]
+        [plugins."io.containerd.grpc.v1.cri".registry.mirrors."REGISTRY_SERVER_IP:8082"]
+          endpoint = ["http://REGISTRY_SERVER_IP:8082"]
+
+      [plugins."io.containerd.grpc.v1.cri".registry.headers]
+
+      [plugins."io.containerd.grpc.v1.cri".registry.auths]
+
+      [plugins."io.containerd.grpc.v1.cri".registry.configs]
+        [plugins."io.containerd.grpc.v1.cri".registry.configs."REGISTRY_SERVER_IP:8082".tls]
+          insecure_skip_verify = true
+        [plugins."io.containerd.grpc.v1.cri".registry.configs."REGISTRY_SERVER_IP:8082".transport]
+          plain_http = true
+        [plugins."io.containerd.grpc.v1.cri".registry.configs."REGISTRY_SERVER_IP:8082".auth]
+          # 인증정보
+          username = "username"
+          password = "password!"
 ```
 
----
+### 3. jenkins 구성
 
-### 7. jenkins install
-
-- jenkins install
+#### 3.1 jenkins 설치
 
 ```bash
 sudo wget -O /usr/share/keyrings/jenkins-keyring.asc https://pkg.jenkins.io/debian-stable/jenkins.io-2023.key
@@ -251,37 +209,39 @@ sudo apt install openjdk-17-jdk -y
 sudo apt install jenkins maven -y
 ```
 
-- jenkins start
+#### 3.2 jenkins 실행
 
 ```bash
 systemctl enable jenkins
 systemctl start jenkins
 ```
 
-- jenkins setting
+#### 3.3 jenkins setting
 
 ```bash
 usermod -a -G docker jenkins
 chmod 666 /var/run/docker.sock
 ```
 
-- jenkins password check
+#### 3.4 jenkins password check
 
 ```bash
 cat /var/lib/jenkins/secrets/initialAdminPassword
 ```
 
-- jenkins recomanded plugin install
+#### 3.5 jenkins plugin 설치
 
-- jenkins additional plugin install
-  - Docker Pipeline
-  - Docker Commons
-  - Pipeline: Stage View
-  - Build Timestamp
+- Docker Pipeline
+
+- Docker Commons
+
+- Pipeline: Stage View
+
+- Build Timestamp
 
 ---
 
-### 8. jenkins settings
+#### 3.6 jenkins settings
 
 - SCM SSH setting (Jenkins GitHub Connection)
   (SCM SSH : https://10cheon00.tistory.com/4)
@@ -292,9 +252,7 @@ cat /var/lib/jenkins/secrets/initialAdminPassword
   (file : cicd_sample/node-app/Jenkinsfile)
   (handbook : https://www.jenkins.io/doc/book/getting-started/)
 
----
-
-### 11. DB Images
+<!-- ### 11. DB Images
 
 - create docker file (postgresql 16.5)
 
