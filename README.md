@@ -26,6 +26,7 @@ helm repo update
 # routingMode : https://docs.cilium.io/en/stable/network/concepts/routing/
 # ipam.mode : https://docs.cilium.io/en/stable/network/concepts/ipam/
 # ipv4NativeRoutingCIDR : https://docs.cilium.io/en/stable/network/concepts/masquerading/
+# l2announcements.enabled : https://docs.cilium.io/en/stable/network/l2-announcements/
 helm install cilium cilium/cilium --version 1.17.5 --namespace kube-system \
 --set k8sServiceHost=auto --set k8sServicePort=6443 --set debug.enabled=true \
 --set k8sServiceLookupConfigMapName=cluster-info --set k8sServiceLookupNamespace=kube-public \
@@ -35,7 +36,7 @@ helm install cilium cilium/cilium --version 1.17.5 --namespace kube-system \
 --set ipv4NativeRoutingCIDR=10.0.0.0/16 --set installNoConntrackIptablesRules=true \
 --set hubble.ui.enabled=true --set hubble.relay.enabled=true --set prometheus.enabled=true --set operator.prometheus.enabled=true --set hubble.metrics.enableOpenMetrics=true \
 --set hubble.metrics.enabled="{dns:query;ignoreAAAA,drop,tcp,flow,port-distribution,icmp,httpV2:exemplars=true;labelsContext=source_ip\,source_namespace\,source_workload\,destination_ip\,destination_namespace\,destination_workload\,traffic_direction}" \
---set operator.replicas=1
+--set operator.replicas=1 --set l2announcements.enabled=true --set externalIPs.enabled=true
 ```
 
 #### ④ Cilium CLI 설치
@@ -67,102 +68,21 @@ kubectl get po -A
 kubectl create -f https://raw.githubusercontent.com/projectcalico/calico/v3.30.2/manifests/tigera-operator.yaml
 ```
 
-<!--
+### 2. Metal MB 설치 (https://metallb.io/installation/) - Calico
 
-### 3. Install Kubernetes Cluster (with kubespary)
-
-#### 3.1 pip 설치
+#### 2.1 ARP 모드를 활성화
 
 ```bash
-sudo apt update -y
-sudo apt install python3-pip -y
+kubectl patch configmap kube-proxy -n kube-system --patch '{"data":{"config.conf":"apiVersion: kubeproxy.config.k8s.io/v1alpha1\nkind: KubeProxyConfiguration\nmode: \"ipvs\"\nipvs:\n  strictARP: true"}}'
 ```
 
-#### 3.2 kubespray install
-
-```bash
-git clone https://github.com/kubernetes-sigs/kubespray.git
-cd kubespray
-sudo pip install -r requirements.txt --break-system-packages --ignore-installed
-```
-
-#### 3.3 configure cluster information (calico cni version)
-
-```bash
-cp -rfp inventory/sample/ inventory/cluster
-```
-
-```bash
-# inventory/cluster/inventory.ini
-[all]
-master ansible_host=10.0.0.10   ip=10.0.0.10  etcd_member_name=etcd1
-node01 ansible_host=10.0.0.11  ip=10.0.0.11
-node02 ansible_host=10.0.0.12  ip=10.0.0.12
-
-[kube_control_plane]
-master
-
-[etcd]
-master
-
-[kube_node]
-node01
-node02
-
-[calico_crr]
-
-[k8s_cluster:children]
-kube_control_plane
-kube_node
-calico_crr
-```
-
-#### 3.4 kubernetes 버전 지정
-
-```bash
-# inventory/cluster/group_vars/k8s_cluster/k8s-cluster.yml
-kube_version: 1.30.4
-```
-
-#### 3.5 etcd 버전 지정
-
-```bash
-# inventory/cluster/group_vars/etcd.yml
-etcd_version: 3.5.12
-```
-
-#### 3.6 ssh pem key 경로 설정
-
-```bash
-export ANSIBLE_PRIVATE_KEY_FILE=~/.ssh/ubuntu.pem
-```
-
-#### 3.7 install kubernetes cluster
-
-```bash
-ansible-playbook -i inventory/cluster/inventory.ini -v --become-user=root cluster.yml
-```
-
----
-
-### 4. metal lb install
-
-(https://metallb.io/installation/)
-
-- ARP 모드를 활성화
-
-```bash
-$ kubectl edit configmap -n kube-system kube-proxy
->>  strictARP: true
-```
-
-- Meltal lb install
+#### 2.2 Meltal lb install
 
 ```bash
 kubectl apply -f https://raw.githubusercontent.com/metallb/metallb/v0.14.9/config/manifests/metallb-native.yaml
 ```
 
-- define ip pool & l2 layer
+#### 2.3 IP Pool, L2 Layer 정의
 
 ```yaml
 # metal-lb-config.yaml
@@ -185,13 +105,76 @@ spec:
     - metal-ip-pool
 ```
 
-- nginx ingress controller
+### 3. Cilium IP Pool Setting (L2 Mode)
+
+#### 3.1 ARP 모드를 활성화 : CiliumL2AnnouncementPolicy 생성
+
+```yaml
+# https://docs.cilium.io/en/stable/network/node-ipam/
+# https://isovalent.com/blog/post/migrating-from-metallb-to-cilium/
+# Cilium LoadBalancer IPAM 및 L2 서비스 공지 LAB : https://isovalent.com/labs/cilium-loadbalancer-ipam-and-l2-service-announcement/
+apiVersion: "cilium.io/v2alpha1"
+kind: CiliumL2AnnouncementPolicy
+metadata:
+  name: cilium-l2-announcement-policy
+spec:
+  externalIPs: true
+  loadBalancerIPs: true
+```
+
+#### 3.2 LB IP Pool 생성
+
+```yaml
+apiVersion: "cilium.io/v2alpha1"
+kind: CiliumLoadBalancerIPPool
+metadata:
+  name: "cilium-ip-ip-pool"
+spec:
+  blocks:
+    - cidr: "10.0.250.0/24"
+```
+
+- helm으로 설치한 후 옵션이 설정되지 않았을 때 하나씩 추가하는 방법
+
+```bash
+# cilium config set <KEY> <VALUE>
+cilium config set l2announcements.enabled true
+cilium config set externalIPs.enabled true
+cilium config view
+```
+
+### 4. Ingress NginX Controller 생성
 
 ```bash
 kubectl apply -f https://raw.githubusercontent.com/kubernetes/ingress-nginx/controller-v1.10.1/deploy/static/provider/cloud/deploy.yaml
 ```
 
----
+### 5. ArgoCD install
+
+#### 5.1 ArgoCD install
+
+```bash
+kubectl create namespace argocd
+kubectl apply -n argocd -f https://raw.githubusercontent.com/argoproj/argo-cd/stable/manifests/install.yaml
+kubectl patch svc argocd-server -n argocd -p '{"spec": {"type":"LoadBalancer"}}'
+```
+
+#### 5.2 ArgoCD CLI install
+
+```bash
+# Timeout으로 제대로 설치가 안될 경우 "--connect-timeout 30 --max-time 300" 옵션 추가
+curl -sSL -o argocd-linux-amd64 https://github.com/argoproj/argo-cd/releases/latest/download/argocd-linux-amd64
+sudo install -m 555 argocd-linux-amd64 /usr/local/bin/argocd
+rm argocd-linux-amd64
+```
+
+#### 5.3 ArgoCD Password check
+
+```bash
+argocd admin initial-password -n argocd
+```
+
+<!--
 
 ### 5. private registry
 
@@ -308,42 +291,6 @@ cat /var/lib/jenkins/secrets/initialAdminPassword
 - jenkins pipeline setting
   (file : cicd_sample/node-app/Jenkinsfile)
   (handbook : https://www.jenkins.io/doc/book/getting-started/)
-
-### 9. ArgoCD install
-
-- ArgoCD install
-
-```bash
-kubectl create namespace argocd
-kubectl apply -n argocd -f https://raw.githubusercontent.com/argoproj/argo-cd/stable/manifests/install.yaml
-kubectl patch svc argocd-server -n argocd -p '{"spec": {"type":"LoadBalancer"}}'
-```
-
-- ArgoCD CLI install
-
-```bash
-curl -sSL -o argocd-linux-amd64 https://github.com/argoproj/argo-cd/releases/latest/download/argocd-linux-amd64
-sudo install -m 555 argocd-linux-amd64 /usr/local/bin/argocd
-rm argocd-linux-amd64
-```
-
-- ArgoCD Password check
-
-```bash
-argocd admin initial-password -n argocd
-```
-
----
-
-### 10. helm
-
-- helm install
-
-```bash
-$ curl -fsSL -o get_helm.sh https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3
-$ chmod 700 get_helm.sh
-$ ./get_helm.sh
-```
 
 ---
 
