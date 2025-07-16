@@ -3,8 +3,8 @@ replica:
   limit: 3
 
 image:
-  repository: 10.0.0.20:8082/app
-  tag: "v1.1.1"
+  repository: 10.0.0.20:8082/app-aiu
+  tag: "v1.0.1"
   pullPolicy: Always
 
 service:
