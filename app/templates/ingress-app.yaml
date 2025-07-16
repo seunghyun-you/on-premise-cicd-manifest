@@ -7,7 +7,7 @@ spec:
   rules:
     - http:
         paths:
-          - path: /
+          - path: /aiu
             pathType: Prefix
             backend:
               service:
