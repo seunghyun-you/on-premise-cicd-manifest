@@ -4,5 +4,5 @@ helm:
       value: 10.0.0.20:8082/app-aiu
       forcestring: true
     - name: image.tag
-      value: v1.0.5
+      value: v1.0.4
       forcestring: true
