@@ -1,8 +1,8 @@
 helm:
   parameters:
-    - name: image.name 
+    - name: image.name
       value: 10.0.0.20:8082/app-aiu
       forcestring: true
     - name: image.tag
-      value: v1.0.7
+      value: v1.0.6
       forcestring: true
