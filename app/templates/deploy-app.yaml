@@ -1,46 +1,46 @@
-apiVersion: apps/v1
-kind: Deployment
-metadata:
-  name: deploy-node-app-aiu
-  namespace: default
-  labels:
-    app: node-aiu
-spec:
-  replicas: {{.Values.replica.count}}
-  revisionHistoryLimit: {{.Values.replica.limit}}
-  selector:
-    matchLabels:
-      app: node-aiu
-  template:
-    metadata:
-      name: pod-node-app-aiu
-      labels:
-        app: node-aiu
-    spec:
-      containers:
-        - name: container-node-app-aiu
-          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
-          imagePullPolicy: {{.Values.image.pullPolicy}}
-          ports:
-            - containerPort: {{.Values.service.port}}
-          env:
-            - name: PORT
-              value: "{{ .Values.service.port }}"
-            - name: HOST
-              value: "{{ .Values.service.host }}"
-            - name: DB_HOST
-              value: "{{ .Values.database.host }}"
-            - name: DB_PORT
-              value: "{{ .Values.database.port }}"
-            - name: DB_NAME
-              value: "{{ .Values.database.name }}"
-            - name: DB_USER
-              valueFrom:
-                secretKeyRef:
-                  name: {{.Values.database.secretName}}
-                  key: postgresql-user
-            - name: DB_PASSWORD
-              valueFrom:
-                secretKeyRef:
-                  name: {{.Values.database.secretName}}
-                  key: postgresql-password
+# apiVersion: apps/v1
+# kind: Deployment
+# metadata:
+#   name: deploy-node-app-aiu
+#   namespace: default
+#   labels:
+#     app: node-aiu
+# spec:
+#   replicas: {{.Values.replica.count}}
+#   revisionHistoryLimit: {{.Values.replica.limit}}
+#   selector:
+#     matchLabels:
+#       app: node-aiu
+#   template:
+#     metadata:
+#       name: pod-node-app-aiu
+#       labels:
+#         app: node-aiu
+#     spec:
+#       containers:
+#         - name: container-node-app-aiu
+#           image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+#           imagePullPolicy: {{.Values.image.pullPolicy}}
+#           ports:
+#             - containerPort: {{.Values.service.port}}
+#           env:
+#             - name: PORT
+#               value: "{{ .Values.service.port }}"
+#             - name: HOST
+#               value: "{{ .Values.service.host }}"
+#             - name: DB_HOST
+#               value: "{{ .Values.database.host }}"
+#             - name: DB_PORT
+#               value: "{{ .Values.database.port }}"
+#             - name: DB_NAME
+#               value: "{{ .Values.database.name }}"
+#             - name: DB_USER
+#               valueFrom:
+#                 secretKeyRef:
+#                   name: {{.Values.database.secretName}}
+#                   key: postgresql-user
+#             - name: DB_PASSWORD
+#               valueFrom:
+#                 secretKeyRef:
+#                   name: {{.Values.database.secretName}}
+#                   key: postgresql-password
