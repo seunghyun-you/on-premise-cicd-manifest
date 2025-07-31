@@ -26,6 +26,8 @@ spec:
           ports:
             - containerPort: {{.Values.service.port}}
           env:
+            - name: APPNAME
+              value: "app"
             - name: PORT
               value: "{{ .Values.service.port }}"
             - name: HOST
