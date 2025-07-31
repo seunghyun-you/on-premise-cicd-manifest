@@ -1,10 +1,10 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: deploy-node-app-app
+  name: deploy-node-app-aiu
   namespace: default
   labels:
-    app: node-app
+    app: node-aiu
   annotations:
     argocd.argoproj.io/sync-options: Delete=false
 spec:
@@ -12,15 +12,15 @@ spec:
   revisionHistoryLimit: {{.Values.replica.limit}}
   selector:
     matchLabels:
-      app: node-app
+      app: node-aiu
   template:
     metadata:
-      name: pod-node-app-app
+      name: pod-node-app-aiu
       labels:
-        app: node-app
+        app: node-aiu
     spec:
       containers:
-        - name: container-node-app-app
+        - name: container-node-app-aiu
           image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
           imagePullPolicy: {{.Values.image.pullPolicy}}
           ports:
