@@ -5,6 +5,8 @@ metadata:
   namespace: default
   labels:
     app: node-aiu
+  annotations:
+    argocd.argoproj.io/sync-options: Prune=confirm
 spec:
   replicas: {{.Values.replica.count}}
   revisionHistoryLimit: {{.Values.replica.limit}}
