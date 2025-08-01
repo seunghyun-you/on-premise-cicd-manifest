@@ -1,7 +1,7 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: deploy-node-app-aiu
+  name: deploy-node-app-background
   namespace: default
   labels:
     app: node-aiu
