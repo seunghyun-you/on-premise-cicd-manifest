@@ -5,8 +5,8 @@ metadata:
   namespace: default
   labels:
     app: node-aiu
-  annotations:
-    argocd.argoproj.io/sync-options: Delete=false
+  # annotations:
+  #   argocd.argoproj.io/sync-options: Delete=false
 spec:
   replicas: {{.Values.replica.count}}
   revisionHistoryLimit: {{.Values.replica.limit}}
