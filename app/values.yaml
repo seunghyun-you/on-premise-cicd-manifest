@@ -1,5 +1,5 @@
 replica:
-  count: 10
+  count: 2
   limit: 3
 
 image:
