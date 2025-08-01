@@ -1,7 +1,7 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: deploy-node-app-app
+  name: deploy-node-app-background
   namespace: default
   labels:
     app: node-app
@@ -15,12 +15,12 @@ spec:
       app: node-app
   template:
     metadata:
-      name: pod-node-app-app
+      name: pod-node-app-background
       labels:
         app: node-app
     spec:
       containers:
-        - name: container-node-app-app
+        - name: container-node-app-background
           image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
           imagePullPolicy: {{.Values.image.pullPolicy}}
           ports:
