@@ -5,10 +5,10 @@ metadata:
   namespace: default
   labels:
     app: node-aiu
-  # annotations:
-  #   argocd.argoproj.io/sync-options: Delete=confirm
-  finalizers:
-    - kubernetes.io/resource-cleanup
+  annotations:
+    argocd.argoproj.io/sync-options: Delete=confirm
+  # finalizers:
+  #   - kubernetes.io/resource-cleanup
 spec:
   replicas: {{.Values.replica.count}}
   revisionHistoryLimit: {{.Values.replica.limit}}
