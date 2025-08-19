@@ -27,6 +27,11 @@ spec:
           imagePullPolicy: {{.Values.image.pullPolicy}}
           ports:
             - containerPort: {{.Values.service.port}}
+          resources:
+            limits:
+              cpu: 500m
+            requests:
+              cpu: 200m
           env:
             - name: APPNAME
               value: "aiu"
