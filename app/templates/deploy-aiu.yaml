@@ -10,8 +10,8 @@ metadata:
   finalizers:
     - kubernetes.io/resource-cleanup
 spec:
-  replicas: { { .Values.replica.count } }
-  revisionHistoryLimit: { { .Values.replica.limit } }
+  replicas: {{.Values.replica.count}}
+  revisionHistoryLimit: {{.Values.replica.limit}}
   selector:
     matchLabels:
       app: node-aiu
@@ -24,9 +24,14 @@ spec:
       containers:
         - name: container-node-app-aiu
           image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
-          imagePullPolicy: { { .Values.image.pullPolicy } }
+          imagePullPolicy: {{.Values.image.pullPolicy}}
           ports:
-            - containerPort: { { .Values.service.port } }
+            - containerPort: {{.Values.service.port}}
+          resources:
+            limits:
+              cpu: 500m
+            requests:
+              cpu: 200m
           env:
             - name: APPNAME
               value: "aiu"
@@ -43,10 +48,10 @@ spec:
             - name: DB_USER
               valueFrom:
                 secretKeyRef:
-                  name: { { .Values.database.secretName } }
+                  name: {{.Values.database.secretName}}
                   key: postgresql-user
             - name: DB_PASSWORD
               valueFrom:
                 secretKeyRef:
-                  name: { { .Values.database.secretName } }
+                  name: {{.Values.database.secretName}}
                   key: postgresql-password
