@@ -5,7 +5,7 @@ metadata:
 spec:
   ports:
     - port: {{ .Values.service.port }}
-      targetPort: {{ .Values.service.port }}
+      targetPort: {{ .Values.service.php }}
       protocol: TCP
   selector:
     app: node-aiu
