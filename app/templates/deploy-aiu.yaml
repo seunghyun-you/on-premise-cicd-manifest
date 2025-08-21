@@ -1,0 +1,32 @@
+# apiVersion: apps/v1
+# kind: Deployment
+# metadata:
+#   name: deploy-node-app-foreground
+#   namespace: default
+#   labels:
+#     app: node-aiu
+#   annotations:
+#     argocd.argoproj.io/sync-options: Prune=confirm
+# spec:
+#   replicas: {{.Values.replica.count}}
+#   revisionHistoryLimit: {{.Values.replica.limit}}
+#   selector:
+#     matchLabels:
+#       app: node-aiu
+#   template:
+#     metadata:
+#       name: pod-node-app-aiu
+#       labels:
+#         app: node-aiu
+#     spec:
+#       containers:
+#         - name: container-node-app-aiu
+#           image: registry.k8s.io/hpa-example
+#           imagePullPolicy: {{.Values.image.pullPolicy}}
+#           ports:
+#             - containerPort: {{.Values.service.php}}
+#           resources:
+#             limits:
+#               cpu: 500m
+#             requests:
+#               cpu: 200m
