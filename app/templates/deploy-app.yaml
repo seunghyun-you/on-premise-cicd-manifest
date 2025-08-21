@@ -8,6 +8,8 @@ metadata:
   annotations:
     argocd.argoproj.io/sync-options: Delete=false
     argocd.argoproj.io/sync-options: ServerSideApply=true
+  # finalizers:
+  #   - kubernetes.io/resource-cleanup
 spec:
   replicas: {{.Values.replica.count}}
   revisionHistoryLimit: {{.Values.replica.limit}}

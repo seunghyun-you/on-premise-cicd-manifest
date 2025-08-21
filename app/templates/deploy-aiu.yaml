@@ -7,8 +7,6 @@ metadata:
     app: node-aiu
   annotations:
     argocd.argoproj.io/sync-options: Prune=confirm
-  # finalizers:
-  #   - kubernetes.io/resource-cleanup
 spec:
   replicas: {{.Values.replica.count}}
   revisionHistoryLimit: {{.Values.replica.limit}}
