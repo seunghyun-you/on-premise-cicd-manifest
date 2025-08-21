@@ -8,6 +8,7 @@ metadata:
   annotations:
     argocd.argoproj.io/sync-options: Delete=false
     argocd.argoproj.io/sync-options: ServerSideApply=true
+    argocd.argoproj.io/sync-options: Prune=confirm
   # finalizers:
   #   - kubernetes.io/resource-cleanup
 spec:
